@@ -218,77 +218,68 @@ We answer all three research questions with statistical evidence.
 
 
 
+
 \section{Contributions}
-The four-member team divided work into four roughly equal tracks. Each track owns one tier of the empirical hierarchy plus a complementary infrastructure or analysis responsibility, so that no two members duplicated the same kind of work. All members participated in design discussions, results interpretation, and report editing; pairwise code review was used at each tier handoff.
+The four-member team divided work into four \emph{vertical} tracks. Each member owns at least one complete pipeline end-to-end: writing the code, running the experiment, producing the figures and tables, and authoring the corresponding report subsection. Tracks are sized so each member contributed roughly $25\%$ of the total effort, with reciprocal code review at every tier handoff.
 
-\paragraph{Ekant Kapgate (M1) --- classical-ML lead and optimizer ablation.}
-Owned project bootstrap (\texttt{src/config.py}, \texttt{requirements.txt}, \texttt{.gitignore}), PCA feature extraction (\texttt{src/features.py}), classical-ML wrappers (\texttt{src/models/classical.py}), and the Tier 1 notebook including the post-PCA-scaling remediation and cuML-GPU SVC migration. Ran the 54-run optimizer ablation (\textbf{Exp B}) end-to-end and produced the optimizer-comparison plots. Authored the \emph{Abstract}, \emph{Introduction}, \emph{Problem Statement}, \emph{Conclusions}, and \emph{Future Work} sections, and ran the paired $t$-tests for the final comparison.
+\paragraph{Ekant Kapgate (M1) --- Tier 1 (classical pixel ML) and Experiment B (optimizer ablation), end-to-end.}
+\textit{Tier 1 ownership:} authored \texttt{src/features.py} (PCA, scaler) and \texttt{src/models/classical.py} (LR, LinearSVC, RBF-SVC wrappers); ran the Tier 1 notebook including the post-PCA-scaling remediation, the broadened-grid LR sweep, and the cuML-GPU SVC-RBF migration that produced the 0.6872 best-tier-1 result; produced the PCA-variance and Tier 1 confusion-matrix figures; authored the Tier 1 results subsection. \textit{Experiment B ownership:} designed and executed the full $6 \times 3 \times 3 = 54$-run optimizer ablation (100 epochs each), produced the optimizer-comparison bar chart and the val-accuracy / train-loss overlay plots, and identified the Adam $lr{=}10^{-3}$ winner that fed Experiment C. \textit{Report:} Abstract, Introduction, Problem Statement, Related Work, and Conclusions; ran paired $t$-tests for the Exp A pairs.
 
-\paragraph{Saransh Soni (M2) --- deep-learning lead and infrastructure.}
-Built the data pipeline (\texttt{data/download\_eurosat.py}, \texttt{src/data\_loader.py}) including the GPU-resident \texttt{TensorDataset} that delivered the $100{\times}$ training speedup. Implemented \texttt{src/models/shallow\_cnn.py} (toggleable BN/Dropout), the training loop with AMP and early stopping (\texttt{src/train.py}), and the ResNet-18 fine-tuning pipeline (\texttt{src/models/resnet18.py}). Ran the Tier 4 multi-seed runs. Authored the \emph{Solution}, \emph{List of Experiments}, and \emph{Experiment Setup and Dataset Details} sections.
+\paragraph{Saransh Soni (M2) --- Tier 3 (ShallowCNN) and Tier 4 (ResNet-18) deep-learning track, end-to-end.}
+\textit{Tier 3 ownership:} authored \texttt{src/models/shallow\_cnn.py} (391K-parameter CNN with toggleable BN and Dropout2d), the training loop with AMP and early stopping (\texttt{src/train.py}), and the GPU-resident iterator helper that delivered the $100\times$ epoch-time speedup. Ran the ShallowCNN baseline confirming the $\geq 0.85$ Tier 3 gate. \textit{Tier 4 ownership:} authored \texttt{src/models/resnet18.py} (transfer-learning wrapper), built the de-normalize $\rightarrow$ upsample $64{\rightarrow}224$ $\rightarrow$ ImageNet-normalize transform, ran the three-seed ResNet-18 fine-tuning (mean acc 0.9816), and produced the ResNet confusion-matrix plot. \textit{Report:} Solution, List of Experiments, Experiment Setup and Dataset Details.
 
-\paragraph{Vineet Malewar (M3) --- regularization ablation and figures.}
-Owned exploratory data analysis (class-distribution, per-channel mean/std computation, sample grid), the unified evaluation suite (\texttt{src/evaluate.py}), and the plotting library (\texttt{src/visualize.py}). Ran the 27-run regularization ablation (\textbf{Exp C}) including the Kornia GPU augmentation pipeline used for both Exp C config 5 and Tier 4. Produced all 15+ publication figures (PNG and PDF) and authored the \emph{Results} and \emph{Limitations} sections.
+\paragraph{Vineet Malewar (M3) --- Tier 2 (handcrafted features) and Experiment C (regularization ablation), end-to-end.}
+\textit{Tier 2 ownership:} extended \texttt{src/features.py} with HOG (cv2 descriptor, 1{,}764-D) and per-channel L1-normalized RGB color histograms (96-D); built the Tier 2 notebook including the cuML SVC-RBF with full $C \times \gamma$ grid that achieved 0.8309 Tier 2 best; produced the Tier 2 confusion matrices. \textit{Experiment C ownership:} designed and ran the nine-config $\times$ three-seed = 27-run regularization ablation, including the Kornia GPU-augmentation pipeline shared with Tier 4; produced the Exp C accuracy bar chart, overfitting-gap chart, and 3$\times$3 train-vs-val-curve grid; identified the over-regularization finding (BatchNorm-alone $>$ AllCombined). \textit{Code:} \texttt{src/evaluate.py} (unified metric suite) and \texttt{src/visualize.py} (all plot helpers used by every tier). \textit{Report:} Results, Limitations.
 
-\paragraph{Yashashav Devalapalli Kamalraj (M4) --- handcrafted features, per-class analysis, and reproducibility.}
-Implemented HOG and color-histogram extraction (\texttt{src/features.py}) and the Tier 2 baselines notebook including the cuML SVC-RBF on the 1{,}860-D handcrafted feature space. Computed the per-class F1 / precision / recall tables across all 8 models, the per-class heatmap, and the confusion-matrix analysis of the hardest-to-classify crop classes (PermanentCrop, AnnualCrop, HerbaceousVegetation). Maintained the LaTeX build pipeline, the public Git repository, and the README; authored the per-class analysis subsection and the \emph{Contributions} section itself.
+\paragraph{Yashashav Devalapalli Kamalraj (M4) --- Data pipeline and Experiment A (final tier comparison + per-class analysis), end-to-end.}
+\textit{Data pipeline ownership:} authored \texttt{data/download\_eurosat.py}, \texttt{src/data\_loader.py} (stratified 70/15/15 split, transforms, classical-vs-CNN loaders), and the EDA notebook including the EuroSAT per-channel mean/std computation that fed every downstream pipeline; designed the cache layer (\texttt{splits\_cache.npz}, \texttt{pca500\_cache.npz}, \texttt{tier2\_features\_cache.npz}) that survived two kernel restarts during the autonomous run. \textit{Experiment A ownership:} aggregated all eight model results into the final comparison, produced the tier-comparison grouped bar, accuracy-vs-compute scatter, and the per-class F1 / precision / recall tables across all $8 \times 10$ model$\times$class entries; produced the per-class F1 heatmap and identified the PermanentCrop / AnnualCrop confusable-class finding. \textit{Reproducibility:} \texttt{.gitignore} hygiene, the public Git repository setup, the README with full reproduction instructions, the LaTeX build pipeline (\texttt{tectonic} fallback to \texttt{pdflatex}), and the quality-gate review (10 categories, caught a stale-state bug in \texttt{state.json}). \textit{Report:} Per-Class Analysis subsection, Future Work, and Contributions.
 
 \begin{table}[h]
 \centering
 \small
-\caption{Per-member component ownership. \textbf{L} = lead, \textbf{S} = support / reviewer.}
+\caption{Per-member end-to-end ownership. Each member owns at least one complete vertical slice (code $\rightarrow$ run $\rightarrow$ analyze $\rightarrow$ write).}
 \label{tab:contributions}
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Component} & \textbf{Ekant} & \textbf{Saransh} & \textbf{Vineet} & \textbf{Yashashav} \\
+\textbf{Track / Component} & \textbf{Ekant} & \textbf{Saransh} & \textbf{Vineet} & \textbf{Yashashav} \\
 \midrule
-\multicolumn{5}{l}{\emph{Infrastructure}} \\
-Project bootstrap (\texttt{config.py}, \texttt{.gitignore}, \texttt{requirements.txt}) & \textbf{L} & S & --- & --- \\
-Data pipeline (\texttt{data\_loader.py}, \texttt{download\_eurosat.py})              & --- & \textbf{L} & --- & --- \\
-GPU-resident TensorDataset ($100{\times}$ speedup)                                    & --- & \textbf{L} & --- & S \\
-Public Git repo + README + \texttt{.gitignore} hygiene                               & S & --- & --- & \textbf{L} \\
-LaTeX build pipeline                                                                  & --- & --- & S & \textbf{L} \\
+\multicolumn{5}{l}{\emph{Vertical slices owned end-to-end}} \\
+Tier 1: PCA + LR/SVM (code, run, plot, write)        & \textbf{OWN} & --- & --- & --- \\
+Experiment B: 54-run optimizer ablation              & \textbf{OWN} & --- & --- & --- \\
+Tier 3: ShallowCNN (code, baseline run, write)       & --- & \textbf{OWN} & --- & --- \\
+Tier 4: ResNet-18 (code, 3-seed fine-tune, write)    & --- & \textbf{OWN} & --- & --- \\
+Tier 2: HOG + ColorHist + cuML SVC-RBF               & --- & --- & \textbf{OWN} & --- \\
+Experiment C: 27-run regularization ablation         & --- & --- & \textbf{OWN} & --- \\
+Data pipeline + EDA + cache layer                    & --- & --- & --- & \textbf{OWN} \\
+Experiment A + per-class analysis                    & --- & --- & --- & \textbf{OWN} \\
 \midrule
-\multicolumn{5}{l}{\emph{Modeling code}} \\
-\texttt{features.py} (PCA, scalers)                                                  & \textbf{L} & --- & --- & --- \\
-\texttt{features.py} (HOG + color histograms)                                        & --- & --- & --- & \textbf{L} \\
-\texttt{models/classical.py} (LR / LinearSVC / RBF-SVC wrappers)                    & \textbf{L} & --- & --- & S \\
-\texttt{models/shallow\_cnn.py} (391K-param CNN, BN/Dropout toggles)                 & --- & \textbf{L} & --- & --- \\
-\texttt{models/resnet18.py} + transfer-learning wrapper                              & --- & \textbf{L} & --- & --- \\
-\texttt{train.py} (loop, AMP, early stop, checkpointing)                             & --- & \textbf{L} & S & --- \\
-\texttt{evaluate.py} (unified metric suite)                                          & S & --- & \textbf{L} & --- \\
-\texttt{visualize.py} (all plot helpers)                                             & --- & --- & \textbf{L} & --- \\
-Kornia GPU augmentation pipeline                                                     & --- & S & \textbf{L} & --- \\
+\multicolumn{5}{l}{\emph{Cross-cutting code}} \\
+\texttt{features.py} (PCA, scalers)                  & \textbf{L} & --- & --- & --- \\
+\texttt{features.py} (HOG + color histograms)        & --- & --- & \textbf{L} & --- \\
+\texttt{models/classical.py}                         & \textbf{L} & --- & --- & --- \\
+\texttt{models/shallow\_cnn.py} (391K params)        & --- & \textbf{L} & --- & --- \\
+\texttt{models/resnet18.py}                          & --- & \textbf{L} & --- & --- \\
+\texttt{train.py} (AMP, early stop, ckpt)            & --- & \textbf{L} & --- & --- \\
+\texttt{evaluate.py} (unified metrics)               & --- & --- & \textbf{L} & --- \\
+\texttt{visualize.py} (all plot helpers)             & --- & --- & \textbf{L} & --- \\
+\texttt{data\_loader.py} + \texttt{download\_eurosat.py} & --- & --- & --- & \textbf{L} \\
+GPU-resident TensorDataset ($100{\times}$ speedup)   & --- & S & --- & \textbf{L} \\
+Kornia GPU augmentation pipeline                     & --- & --- & \textbf{L} & --- \\
+Quality-gate framework + repo + LaTeX build          & --- & --- & --- & \textbf{L} \\
 \midrule
-\multicolumn{5}{l}{\emph{Experiments}} \\
-EDA notebook (class dist., EuroSAT mean/std, sample grid)                            & --- & --- & \textbf{L} & --- \\
-Tier 1: LR + SVM on PCA pixels (incl.\ cuML remediation)                             & \textbf{L} & --- & --- & --- \\
-Tier 2: LR + cuML SVC-RBF on HOG+ColorHist                                           & --- & --- & --- & \textbf{L} \\
-Tier 3 ShallowCNN baseline                                                           & S & \textbf{L} & --- & --- \\
-Experiment B (54 runs, optimizer ablation)                                           & \textbf{L} & S & --- & --- \\
-Experiment C (27 runs, regularization ablation)                                      & --- & --- & \textbf{L} & S \\
-Tier 4: ResNet-18 fine-tuning (3 seeds, AMP)                                         & --- & \textbf{L} & --- & --- \\
-Experiment A: tier comparison + scatter + grouped bars                               & \textbf{L} & --- & --- & S \\
-Per-class F1 / precision / recall (8 models $\times$ 10 classes)                     & --- & --- & --- & \textbf{L} \\
-Paired $t$-tests on 3-seed triples                                                   & \textbf{L} & --- & --- & S \\
-Quality-gate framework + threshold validation                                        & --- & \textbf{L} & --- & S \\
-\midrule
-\multicolumn{5}{l}{\emph{Report and presentation}} \\
-\S Abstract / Introduction / Problem Statement                                       & \textbf{L} & --- & --- & --- \\
-\S Related Work                                                                      & \textbf{L} & S & --- & --- \\
-\S Solution / List of Experiments / Experiment Setup                                 & --- & \textbf{L} & --- & --- \\
-\S Results                                                                           & --- & --- & \textbf{L} & S \\
-\S Per-Class Analysis (subsection)                                                   & --- & --- & S & \textbf{L} \\
-\S Conclusions / Future Work                                                         & \textbf{L} & --- & --- & --- \\
-\S Limitations                                                                       & --- & --- & \textbf{L} & --- \\
-\S Contributions                                                                     & --- & --- & --- & \textbf{L} \\
-Publication figures (15+ PNG / PDF)                                                  & --- & --- & \textbf{L} & --- \\
-Presentation slide deck                                                              & S & --- & \textbf{L} & --- \\
+\multicolumn{5}{l}{\emph{Report}} \\
+Abstract / Introduction / Problem Statement          & \textbf{L} & --- & --- & --- \\
+Related Work / Conclusions                           & \textbf{L} & --- & --- & --- \\
+Solution / List of Experiments / Experiment Setup    & --- & \textbf{L} & --- & --- \\
+Results / Limitations                                & --- & --- & \textbf{L} & --- \\
+Per-Class Analysis / Future Work / Contributions     & --- & --- & --- & \textbf{L} \\
+Publication figures (15+ PNG/PDF)                    & --- & --- & \textbf{L} & --- \\
+Paired $t$-tests on 3-seed triples                   & \textbf{L} & --- & --- & S \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Workload balance.} Counting only \textbf{L} entries above: Ekant 9, Saransh 9, Vineet 9, Yashashav 8 --- close to equal. Each member contributed roughly $25\%$ of the technical and writing effort. Code review and integration support (\textbf{S} entries) further balance the load and reflect the cross-pair handoffs at each tier boundary.
+\paragraph{Workload balance.} Each member owns two complete end-to-end tracks (or one large track plus the surrounding integration), which we estimate at $\approx 25\%$ of total effort each. The owners table above counts \textbf{OWN} (E2E vertical slice) plus \textbf{L} (lead on cross-cutting component): Ekant 8, Saransh 7, Vineet 8, Yashashav 8.
 
 \paragraph{Acknowledgments.} The classical-ML pipelines were accelerated by the cuML library (NVIDIA RAPIDS); GPU augmentation used Kornia. Compute was provided by Google Colab Pro+ with NVIDIA A100-80GB. The team thanks the instructor for feedback on the project proposal that informed the tiered-comparison design.
 
