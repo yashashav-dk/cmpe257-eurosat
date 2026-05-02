@@ -26,3 +26,4 @@
 [2026-05-02 09:46:46 UTC] (autonomous) G6: PDF compiled, 494.6KB
 [2026-05-02 09:47:58 UTC] (autonomous) QC fix: state.tier1_v2_best_acc corrected 0.6486 -> 0.6872 (unscaled SVC-RBF was true best)
 [2026-05-02 09:48:02 UTC] (autonomous) QUALITY GATE PASS: all artifacts validated, 0 warnings
+[2026-05-02 11:04:34 UTC] (autonomous) SESSION END: report 30pp, repo public, notebook + LICENSE + README in place

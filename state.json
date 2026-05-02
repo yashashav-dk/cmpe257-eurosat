@@ -1,7 +1,7 @@
 {
-  "stage": "ALL_GATES_PASSED",
+  "stage": "SESSION_COMPLETE",
   "project_root": "/content/drive/MyDrive/cmpe257_eurosat",
-  "last_updated": "2026-05-02T09:48:02.011316+00:00",
+  "last_updated": "2026-05-02T11:04:34.628309+00:00",
   "eurosat_mean": [
     0.3448286020446375,
     0.3805529425231431,
@@ -54,5 +54,13 @@
   "quality_failures": [
     "Tier 1 best: state=0.6486 vs CSV=0.6872",
     "T1 \u2265 0.65 (amended): 0.6486"
-  ]
+  ],
+  "session_artifacts_complete": true,
+  "report_pages": 30,
+  "report_pdf_kb": 1374.2,
+  "github_repo_url": "https://github.com/yashashav-dk/cmpe257-eurosat",
+  "github_visibility": "PUBLIC",
+  "reproduction_notebook": "notebooks/cmpe257_eurosat_reproduction.ipynb",
+  "license": "MIT",
+  "professor_acknowledged": "Gautam Krishna"
 }
