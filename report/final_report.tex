@@ -20,7 +20,7 @@
 \maketitle
 
 \section*{Code Repository}
-Public Git repository (code, results, figures, and report sources): \url{https://github.com/USERNAME/cmpe257-eurosat}
+Public Git repository (code, results, figures, and report sources): \url{https://github.com/yashashav-dk/cmpe257-eurosat}
 
 \begin{abstract}
 We benchmark four model tiers on the EuroSAT RGB land-use classification task (10 classes, 27{,}000 64$\times$64 satellite images): (T1) classical linear/kernel models on PCA-reduced raw pixels, (T2) classical models on HOG and color-histogram features, (T3) a 391K-parameter shallow CNN with optimizer and regularization ablations, and (T4) a fine-tuned ImageNet-pretrained ResNet-18. Test accuracy scales monotonically across tiers from 0.687 (T1) $\rightarrow$ 0.831 (T2) $\rightarrow$ 0.966 (T3+BatchNorm) $\rightarrow$ 0.982 (T4). We additionally report a $6{\times}3{\times}3$-grid optimizer ablation (54 runs) and a $9{\times}3$-grid regularization ablation (27 runs) on the shallow CNN. Adam ($lr{=}10^{-3}$) wins on convergence speed; BatchNorm alone delivers the highest single-technique improvement; combining all regularization techniques \emph{hurts} performance through over-regularization.

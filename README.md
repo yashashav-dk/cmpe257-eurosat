@@ -1,3 +1,5 @@
+**Repo:** https://github.com/yashashav-dk/cmpe257-eurosat
+
 # EuroSAT Land-Use Classification — CMPE 257 Project
 
 **Title:** From SVMs to ResNets: Satellite Land-Use Classification on EuroSAT
