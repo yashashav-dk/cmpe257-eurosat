@@ -119,6 +119,25 @@ cmpe257-eurosat/
 
 ## Reproduction (from scratch)
 
+### One-Click Reproduction Notebook
+
+For the easiest reproduction path, open [`notebooks/cmpe257_eurosat_reproduction.ipynb`](notebooks/cmpe257_eurosat_reproduction.ipynb) in Google Colab (free GPU sufficient for `RUN_MODE="quick"`):
+
+```
+[Open in Colab] https://colab.research.google.com/github/yashashav-dk/cmpe257-eurosat/blob/main/notebooks/cmpe257_eurosat_reproduction.ipynb
+```
+
+The notebook is fully self-contained: it installs dependencies, downloads the dataset, runs every experiment end-to-end, and saves all results and figures. Two run modes:
+
+| Mode | Seeds | Epochs | Wall-clock (A100) | Purpose |
+|---|---|---|---|---|
+| `RUN_MODE = "quick"` (default) | 1 | 30 (CNN) / 15 (ResNet) | ~30 min | Sanity-check reproduction |
+| `RUN_MODE = "full"` | 3 | 100 / 50 | ~5 hr | Paper-equivalent numbers |
+
+Falls back to sklearn (CPU) if cuML unavailable; falls back to manual augmentation if Kornia unavailable.
+
+
+
 ### 1. Install
 
 ```bash
@@ -281,7 +300,7 @@ If you use this code or report in your work, please cite:
 - **EuroSAT dataset:** Helber et al. (2019), Zenodo `doi:10.5281/zenodo.7711810`, CC-BY-4.0.
 - **GPU acceleration:** NVIDIA RAPIDS (cuML), Kornia.
 - **Compute:** Google Colab Pro+ (A100-80GB).
-- **Course feedback:** Prof. (CMPE 257 instructor) and project-proposal feedback that informed the tiered-comparison design.
+- **Course feedback:** Prof. Gautam Krishna and project-proposal feedback that informed the tiered-comparison design.
 
 ---
 
@@ -290,8 +309,3 @@ If you use this code or report in your work, please cite:
 Code: MIT License (see [LICENSE](LICENSE)).
 EuroSAT dataset: CC-BY-4.0 — see Helber et al. (2019).
 
----
-
-## Contact
-
-For questions about this work, open an issue or contact the team via the SJSU course channels.
