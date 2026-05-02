@@ -1,0 +1,272 @@
+\documentclass[10pt,letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath, amssymb}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{multirow}
+
+\hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue}
+
+\title{From SVMs to ResNets: \\ Satellite Land-Use Classification on EuroSAT}
+\author{Ekant Kapgate \and Saransh Soni \and Vineet Malewar \and Yashashav Devalapalli Kamalraj \\
+\small{San Jos\'{e} State University --- CMPE 257: Machine Learning}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Code Repository}
+Public Git repository (code, results, figures, and report sources): \url{https://github.com/USERNAME/cmpe257-eurosat}
+
+\begin{abstract}
+We benchmark four model tiers on the EuroSAT RGB land-use classification task (10 classes, 27{,}000 64$\times$64 satellite images): (T1) classical linear/kernel models on PCA-reduced raw pixels, (T2) classical models on HOG and color-histogram features, (T3) a 391K-parameter shallow CNN with optimizer and regularization ablations, and (T4) a fine-tuned ImageNet-pretrained ResNet-18. Test accuracy scales monotonically across tiers from 0.687 (T1) $\rightarrow$ 0.831 (T2) $\rightarrow$ 0.966 (T3+BatchNorm) $\rightarrow$ 0.982 (T4). We additionally report a $6{\times}3{\times}3$-grid optimizer ablation (54 runs) and a $9{\times}3$-grid regularization ablation (27 runs) on the shallow CNN. Adam ($lr{=}10^{-3}$) wins on convergence speed; BatchNorm alone delivers the highest single-technique improvement; combining all regularization techniques \emph{hurts} performance through over-regularization.
+\end{abstract}
+
+\section{Introduction}
+Earth Observation programs (Sentinel-2, Landsat) generate petabytes of multispectral imagery; reliable land-use classification at scale is a prerequisite for environmental monitoring, urban planning, and agricultural analytics. Hand-curated annotation does not scale; supervised machine learning provides a practical path forward. EuroSAT \cite{helber2019} is one of the most widely used benchmarks for this task: 27{,}000 labeled $64{\times}64$ Sentinel-2 patches across 10 land-use classes, with the RGB subset publicly available.
+
+This project provides a controlled comparative study spanning four model families on a fixed train/val/test split. We pose three research questions:
+
+\begin{itemize}
+  \item \textbf{RQ1.} How does test accuracy scale across model tiers (raw pixels $\rightarrow$ handcrafted features $\rightarrow$ shallow CNN $\rightarrow$ deep transfer)?
+  \item \textbf{RQ2.} Among six optimizers (SGD, SGD+Momentum, NAG, Adam, Adagrad, RMSProp) on the shallow CNN, which converges fastest and which generalizes best?
+  \item \textbf{RQ3.} Which regularization technique best closes the train/test gap, and do they compose?
+\end{itemize}
+
+\section{Problem Statement}
+Given an input RGB image $\mathbf{x} \in \mathbb{R}^{H \times W \times 3}$ from the EuroSAT distribution, predict its land-use class $y \in \{1, \ldots, 10\}$. Formally, learn a classifier $f_\theta : \mathbb{R}^{H \times W \times 3} \rightarrow \Delta^{10}$ minimizing the cross-entropy risk $\mathbb{E}_{(\mathbf{x}, y) \sim \mathcal{D}}[-\log f_\theta(\mathbf{x})_y]$ on a held-out test split, with the secondary requirement that the model be reproducible across random seeds and trainable on commodity GPU hardware. The dataset is class-balanced (2{,}000--3{,}000 per class), eliminating prior-shift considerations. Practical sub-questions: (i) does feature engineering close the gap to learned representations? (ii) can a small CNN match a pretrained one given proper regularization? (iii) how robust are the conclusions to optimizer / hyperparameter choices?
+
+\section{Related Work}
+Helber et al.\ \cite{helber2019} introduced EuroSAT and reported $98.57\%$ test accuracy with a fine-tuned ResNet-50, establishing the strong-supervised ceiling. He et al.\ \cite{he2016} introduced ResNet residual blocks. Wilson et al.\ \cite{wilson2017} argued adaptive optimizers generalize worse than SGD with momentum on canonical benchmarks; Choi et al.\ \cite{choi2019} countered that the conclusion depends critically on the hyperparameter tuning budget. Ioffe \& Szegedy \cite{batchnorm2015} introduced BatchNorm; Srivastava et al.\ \cite{dropout2014} proposed Dropout; both are now-standard regularizers. Kingma \& Ba \cite{kingma2014} introduced Adam. Deng et al.\ \cite{deng2009} produced ImageNet, the source of our T4 transfer-learning weights. The HOG descriptor \cite{dalal2005} provides our T2 handcrafted feature baseline.
+
+\section{Solution}
+We design a tiered comparison hierarchy that isolates the contribution of each modeling choice. Each tier strictly subsumes the prior tier in expressive power, so monotonic accuracy gains are expected when the choice contributes signal beyond the prior representation:
+
+\begin{itemize}
+  \item \textbf{Tier 1 (T1) --- Pixel + PCA + classical.} Flatten to $\mathbb{R}^{12288} \rightarrow$ StandardScaler $\rightarrow$ PCA$_{k\in\{50,100,200,500\}}$ $\rightarrow$ \{multinomial LR, LinearSVC, RBF-SVC\}. Establishes the lowest-capacity baseline.
+  \item \textbf{Tier 2 (T2) --- Handcrafted features + classical.} HOG (1{,}764-D) $\oplus$ per-channel L1-normalized RGB color histograms (96-D) $\rightarrow$ StandardScaler $\rightarrow$ \{LR, RBF-SVC\}. Tests whether engineered features close the gap to learned representations.
+  \item \textbf{Tier 3 (T3) --- Shallow CNN (391K parameters).} Four conv blocks ($3{\rightarrow}32{\rightarrow}64{\rightarrow}128{\rightarrow}256$, 3$\times$3 kernels), each followed by ReLU, MaxPool (first three blocks), and optional BN/Dropout2d; global average pool $\rightarrow$ FC(256, 10). Tests the value of learned features without transfer.
+  \item \textbf{Tier 4 (T4) --- ResNet-18 transfer learning.} \texttt{torchvision.resnet18} (\texttt{IMAGENET1K\_V1} weights), final FC replaced with \texttt{Linear(512, 10)}, full backbone fine-tuning. Tests the value of pretrained representations.
+\end{itemize}
+
+Within Tier 3 we run two ablation studies: \textbf{Exp B} (optimizer, RQ2) and \textbf{Exp C} (regularization, RQ3). Tier 4 is run only at the optimal-hyperparameter configuration since transfer fine-tuning best practices are well-established \cite{he2016}.
+
+\section{List of Experiments}
+We conducted five distinct experiments. All experiments share the same test set, identical preprocessing pipelines per tier, and the same evaluation protocol (Section~\ref{sec:setup}).
+
+\begin{enumerate}
+  \item \textbf{Tier 1 baseline (E1).} Logistic regression and SVC (linear and RBF kernels) on PCA-reduced raw pixels. Hyperparameters: $C \in \{10^{-4}, \ldots, 10^{2}\}$, $\gamma \in \{10^{-3}, 10^{-2}, 10^{-1}, \mathrm{scale}\}$, $k \in \{50, 100, 200, 500\}$ PCA components. Selected via 5-fold stratified CV on (train + val).
+  \item \textbf{Tier 2 baseline (E2).} Logistic regression and RBF-SVC on concatenated HOG + color-histogram features. Same CV protocol.
+  \item \textbf{Experiment B --- Optimizer Ablation (E3).} Six optimizers (SGD, SGD+Momentum, NAG, Adam, Adagrad, RMSProp) $\times$ three learning rates ($10^{-4}, 10^{-3}, 10^{-2}$) $\times$ three seeds = \textbf{54 runs} of the shallow CNN baseline (no BN, dropout, augmentation, weight decay), 100 epochs each, no early stopping.
+  \item \textbf{Experiment C --- Regularization Ablation (E4).} Optimizer fixed to the E3 winner. Nine configurations $\times$ three seeds = \textbf{27 runs}: Baseline, L2($\lambda \in \{10^{-4}, 10^{-3}\}$), Dropout($p \in \{0.3, 0.5\}$), BatchNorm, DataAugmentation, EarlyStopping (patience 10), and an AllCombined config (BN + Dropout 0.3 + L2 $10^{-4}$ + Aug + ES).
+  \item \textbf{Tier 4 (E5).} Three seeds of ResNet-18 fine-tuning, 50 epochs each, Adam $lr{=}10^{-4}$, mixed precision (AMP), full augmentation, early stopping (patience 10).
+\end{enumerate}
+
+The Final Comparison (\textbf{Exp A}) is not a separate run but an aggregation: it merges the best representative of each tier into a single test-set comparison, with paired $t$-tests on 3-seed triples for any pair within $2$pp.
+
+\section{Experiment Setup and Dataset Details}
+\label{sec:setup}
+
+\subsection{Dataset}
+EuroSAT RGB \cite{helber2019} retrieved from Zenodo (\texttt{doi:10.5281/zenodo.7711810}). 27{,}000 RGB JPEG patches, $64{\times}64$ pixels, 10 classes (AnnualCrop, Forest, HerbaceousVegetation, Highway, Industrial, Pasture, PermanentCrop, Residential, River, SeaLake) with 2{,}000--3{,}000 samples each. The Sentinel-2 multispectral version exists but is out of scope.
+
+\subsection{Splits and Reproducibility}
+A single stratified split with seed 42 yields train$=18{,}899$, val$=4{,}051$, test$=4{,}050$. The test set is touched exactly once per model after final training. Classical pipelines merge train and val and use 5-fold stratified cross-validation; CNN pipelines use the val set for early stopping and best-epoch selection. All seeds set deterministically across \texttt{random}, \texttt{numpy}, \texttt{torch} (CPU and CUDA); \texttt{cudnn.deterministic=True}, \texttt{cudnn.benchmark=False}. Multi-seed runs use seeds $\{42, 123, 456\}$.
+
+\subsection{Per-channel statistics}
+Computed on the training split only (no leakage): $\mu = [0.345, 0.381, 0.408]$, $\sigma = [0.203, 0.137, 0.116]$. T4 (ResNet-18) uses ImageNet statistics ($\mu = [0.485, 0.456, 0.406]$, $\sigma = [0.229, 0.224, 0.225]$) since pretrained weights expect them.
+
+\subsection{Hyperparameters}
+\begin{itemize}
+  \item Shallow CNN: batch size 64, 100 epochs (Exp B without early stopping; Exp C with optional patience 10), CrossEntropyLoss.
+  \item ResNet-18: batch size 64, 50 epochs, patience 10, Adam $lr{=}10^{-4}$, AMP enabled.
+  \item Augmentation (Exp C config 5 and Tier 4): RandomHFlip ($p{=}0.5$), RandomVFlip ($p{=}0.5$), RandomRotation ($\pm 15^\circ$), ColorJitter (brightness/contrast/saturation 0.2, hue 0.1) --- applied on GPU via Kornia.
+\end{itemize}
+
+\subsection{Evaluation Metrics}
+All models pass through identical metric computation: accuracy, macro precision/recall/F1, per-class F1, $10\times10$ confusion matrix, one-vs-rest macro ROC-AUC, train wall-clock time, train-final-vs-test gap, and (for CNN tiers) mean $\pm$ std over 3 seeds. Statistical significance assessed via paired Student's $t$-test on the 3-seed triples.
+
+\subsection{Compute Environment}
+NVIDIA A100-SXM4-80GB (Colab Pro+), PyTorch 2.10 + CUDA 12.8, scikit-learn 1.5+, cuML 26.02 (GPU-accelerated SVC), Kornia 0.8 (GPU augmentation). All training data resides on the GPU as a TensorDataset to eliminate I/O bottlenecks ($\sim$1.06 s/epoch versus 105 s/epoch with a Drive-backed ImageFolder). Total session compute: $\approx 5$ hours.
+
+\section{Results}
+
+\subsection{Final Tier Comparison (Exp A, RQ1)}
+
+\begin{table}[h]
+\centering
+\caption{Final tier comparison (test set, mean$\pm$std for 3-seed runs).}
+\label{tab:expA}
+\small
+\begin{tabular}{lcrrrrr}
+\toprule
+\textbf{Model} & \textbf{Tier} & \textbf{Acc.} & \textbf{Macro-F1} & \textbf{ROC-AUC} & \textbf{Time (s)} & \textbf{n} \\
+\midrule
+LR + PCA(200) & 1 & 0.4422 & 0.4241 & 0.8606 & 6.8 & CV \\
+SVM-RBF + PCA(500) & 1 & \textbf{0.6872} & 0.6826 & 0.9252 & 138.9 & CV \\
+LR + HOG & 2 & 0.7795 & 0.7748 & 0.9727 & 238.2 & CV \\
+SVM-RBF + HOG & 2 & \textbf{0.8309} & 0.8271 & 0.9701 & 268.2 & CV \\
+ShallowCNN (baseline) & 3 & 0.9550 $\pm$ 0.0034 & 0.9540 & 0.9979 & 101.4 & 3 \\
+ShallowCNN + BN & 3 & \textbf{0.9657 $\pm$ 0.0013} & 0.9648 & 0.9987 & 124.0 & 3 \\
+ShallowCNN AllCombined & 3 & 0.9348 $\pm$ 0.0081 & 0.9335 & 0.9974 & 292.7 & 3 \\
+ResNet-18 (fine-tuned) & 4 & \textbf{0.9816 $\pm$ 0.0016} & 0.9812 & 0.9997 & 276.1 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tier monotonicity holds (T1 $<$ T2 $<$ T3 $<$ T4). Largest jump is T2$\rightarrow$T3 ($+13$pp), where learned features replace handcrafted ones. Paired $t$-tests on 3-seed triples: ResNet-18 vs.\ ShallowCNN+BN: $p=0.011$ (significant); baseline vs.\ +BN: $p=0.072$ (marginal). See Figure~\ref{fig:expA}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{../results/figures/exp_a_tier_comparison.png}
+\caption{Tier comparison. Bars colored by tier; error bars show std over 3 seeds (T3, T4) or are zero (T1, T2 are CV-selected single test evaluations).}
+\label{fig:expA}
+\end{figure}
+
+\subsection{Optimizer Ablation (Exp B, RQ2)}
+
+\begin{table}[h]
+\centering
+\caption{Best LR per optimizer (test acc, 3 seeds).}
+\label{tab:expB}
+\small
+\begin{tabular}{lcrcr}
+\toprule
+\textbf{Optimizer} & \textbf{Best LR} & \textbf{Test Acc.} & \textbf{Conv@90\%} & \textbf{Diverged} \\
+\midrule
+Adam            & $10^{-3}$ & \textbf{0.9550 $\pm$ 0.0042} & 10 ep & 1 (lr=$10^{-2}$) \\
+NAG             & $10^{-2}$ & 0.9547 $\pm$ 0.0063 & 13 ep & 0 \\
+SGD + Momentum  & $10^{-2}$ & 0.9546 $\pm$ 0.0066 & 14 ep & 0 \\
+RMSProp         & $10^{-3}$ & 0.9519 $\pm$ 0.0036 & 14 ep & 0 \\
+Adagrad         & $10^{-2}$ & 0.9472 $\pm$ 0.0024 & 21 ep & 0 \\
+SGD             & $10^{-2}$ & 0.9165 $\pm$ 0.0021 & 79 ep & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The top-4 optimizers tie within $0.3$pp on final accuracy. Adam wins on convergence speed (10 epochs to reach 90\% val accuracy versus 13--21 for the rest). Pure SGD lags by 4pp at its best LR. Wilson et al.'s \cite{wilson2017} hypothesis that SGD+Momentum dominates Adam is \emph{not} confirmed on EuroSAT --- they tie within seed noise.
+
+\subsection{Regularization Ablation (Exp C, RQ3)}
+
+\begin{table}[h]
+\centering
+\caption{Test accuracy and overfitting gap (final train acc -- test acc), 3 seeds.}
+\label{tab:expC}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Configuration} & \textbf{Test Acc.} & \textbf{Gap} \\
+\midrule
+1. Baseline                  & 0.9550 $\pm$ 0.0034 & $+0.035$ \\
+2a. L2 ($\lambda{=}10^{-4}$) & 0.9612 $\pm$ 0.0016 & $+0.031$ \\
+2b. L2 ($\lambda{=}10^{-3}$) & 0.9542 $\pm$ 0.0052 & $+0.011$ \\
+3a. Dropout (0.3)            & 0.9527 $\pm$ 0.0022 & $-0.011$ \\
+3b. Dropout (0.5)            & 0.8669 $\pm$ 0.0135 & $-0.015$ \\
+4.  BatchNorm                & \textbf{0.9657 $\pm$ 0.0016} & $+0.028$ \\
+5.  DataAugmentation         & 0.9641 $\pm$ 0.0031 & $+0.023$ \\
+6.  EarlyStopping            & 0.9550 $\pm$ 0.0042 & $+0.032$ \\
+7.  AllCombined              & 0.9348 $\pm$ 0.0099 & $-0.056$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+BatchNorm alone is the strongest single regularizer ($+1.1$pp over baseline). Counter-intuitively, AllCombined \emph{underperforms} BN-alone by 3pp --- evidence of \textbf{over-regularization} on a clean, well-balanced dataset. Dropout 0.5 destroys learning capacity. L2 $10^{-3}$ closes the train/test gap to $0.011$ but does not improve test accuracy (regularizing toward but past the optimum).
+
+\subsection{Per-Class Analysis}
+
+Across all 8 models, the spectrally-similar crop classes \{PermanentCrop, HerbaceousVegetation, AnnualCrop, Pasture\} are consistently hardest (mean F1 0.71--0.81). Forest, Industrial, and SeaLake are easiest (mean F1 $>$ 0.89). ResNet-18 weakest classes: PermanentCrop (0.953), Pasture (0.964); strongest: SeaLake (0.999), Residential (0.996), Forest (0.994). Top confusions are within crop families, consistent with similar spectral signatures.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{../results/figures/per_class_f1_heatmap.png}
+\caption{Per-class F1 heatmap for all 8 models (test set).}
+\label{fig:perclass}
+\end{figure}
+
+\section{Conclusions}
+We answer all three research questions with statistical evidence.
+
+\textbf{RQ1.} Tiers are monotonically ordered with ResNet-18 the strongest at 0.982. The largest jump (T2 $\rightarrow$ T3, $+13$pp) occurs when handcrafted features are replaced by learned ones; further depth (T3 $\rightarrow$ T4) adds only $+1.6$pp despite a $28\times$ parameter count increase --- a steep diminishing return.
+
+\textbf{RQ2.} At the well-tuned top end, optimizer choice contributes $<\!1$pp variance. Adam's main advantage is faster convergence (10 ep to 90\%), not asymptotic accuracy. Adam is unstable at $lr{=}10^{-2}$ (1/3 seeds diverged); other optimizers tolerated this LR.
+
+\textbf{RQ3.} BatchNorm dominates among single regularizers ($+1.1$pp). Combining regularizers without retuning hurts ($-3$pp vs.\ BN alone). EuroSAT's class balance and clean labels likely suppress the marginal returns of stacked regularization seen in messier domains.
+
+\textbf{Practical takeaway.} Pretrained ResNet-18 wins overall (0.982) but ShallowCNN+BN (0.966) closes 89\% of the gap with $1/28$ of the parameters and $1/11$ of the compute --- a strong recommendation for resource-constrained deployment.
+
+\section{Limitations}
+\begin{itemize}
+  \item \textbf{Tier 1 below proposal target.} We observe a $\approx 0.69$ empirical ceiling for raw-pixel classical ML; the project proposal's 70--82\% claim was optimistic. The Tier 1 minimum acceptance threshold was lowered from $0.70$ to $0.65$ after the empirical ceiling was confirmed. ROC-AUC of 0.93 indicates probabilistic separability is high; argmax-accuracy is fundamentally limited by linear-decision-boundary capacity.
+  \item \textbf{Three seeds yield wide CIs.} The baseline-vs-BN comparison ($p=0.072$) is marginal at $\alpha{=}0.05$. Five seeds would tighten claims but would extend training time by $\approx 67\%$ for Exp B/C.
+  \item \textbf{RGB-only inputs.} EuroSAT also provides 10 additional spectral bands (Sentinel-2 multispectral). NIR and shortwave-IR bands are particularly informative for crop discrimination --- the very classes our models struggle with.
+  \item \textbf{Single train/val/test split.} Cross-dataset robustness (Spain $\rightarrow$ different geography) is not evaluated.
+  \item \textbf{Soft divergence not flagged automatically.} One Adam $lr{=}10^{-2}$ run got stuck at random (acc 0.111) without producing NaN gradients; our divergence detector only flags hard NaN. Caught manually; future versions should add a per-epoch acc-floor sentinel.
+\end{itemize}
+
+\section{Future Work}
+\begin{itemize}
+  \item \textbf{Multispectral inputs.} Repeat the tier hierarchy on the full 13-band Sentinel-2 EuroSAT release. Hypothesis: NIR + SWIR will close the AnnualCrop / PermanentCrop / HerbaceousVegetation confusion gap.
+  \item \textbf{Knowledge distillation.} Distill ResNet-18 into a MobileNetV3-Small student to recover the $+1.6$pp T4 vs.\ T3 gap with a smaller deployable model.
+  \item \textbf{Stronger augmentation \& self-supervised pretraining.} Test SimCLR/DINO pretraining on unlabeled Sentinel-2 tiles; compare to ImageNet transfer.
+  \item \textbf{Domain shift.} Evaluate trained models on RESISC45 \cite{cheng2017} or NWPU-Resisc to measure cross-distribution robustness.
+  \item \textbf{Optimizer revisit at higher LR budgets.} Repeat Exp B with cosine annealing and warmup, which may favor SGD+Momentum over Adam at the asymptote.
+\end{itemize}
+
+
+\section{Contributions}
+The team divided work according to the planned responsibility matrix. Each member led one or more components and supported others through code review and integration. All members participated in design discussions, results interpretation, and report editing.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Per-member contribution matrix. \textbf{L} = lead, \textbf{S} = support.}
+\label{tab:contributions}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Component} & \textbf{Ekant} & \textbf{Saransh} & \textbf{Vineet} & \textbf{Yashashav} \\
+\midrule
+Project setup, \texttt{config.py}, \texttt{.gitignore}                  & L & S & --- & --- \\
+Data download script + \texttt{data\_loader.py}                          & --- & L & --- & --- \\
+EDA notebook (class distribution, EuroSAT mean/std)                      & --- & --- & L & --- \\
+\texttt{evaluate.py}, \texttt{visualize.py}                              & --- & --- & L & --- \\
+\texttt{features.py} (PCA)                                               & L & --- & --- & --- \\
+\texttt{features.py} (HOG + color histograms)                            & --- & --- & --- & L \\
+\texttt{models/classical.py} + Tier 1 baselines notebook                 & L & --- & --- & --- \\
+Tier 2 baselines notebook                                                & --- & --- & --- & L \\
+\texttt{models/shallow\_cnn.py} + \texttt{train.py} + Tier 3 notebook    & --- & L & --- & --- \\
+Experiment B (optimizer ablation, 54 runs)                               & L & S & --- & --- \\
+Experiment C (regularization ablation, 27 runs)                          & --- & --- & L & S \\
+\texttt{models/resnet18.py} + Tier 4 notebook                            & --- & L & --- & --- \\
+Experiment A final comparison notebook                                   & L & --- & --- & S \\
+Per-class analysis + statistical tests                                   & --- & --- & --- & L \\
+Publication-quality figures (PNG/PDF)                                    & --- & --- & L & --- \\
+Report \S1--3 (Intro, Problem Statement, Related Work)                   & L & --- & --- & --- \\
+Report \S4--6 (Solution, Experiments, Setup)                             & --- & L & --- & --- \\
+Report \S7--9 (Results, Conclusions, Limitations)                        & --- & --- & L & L \\
+Report \S10 (Future Work) + abstract                                     & L & --- & --- & --- \\
+Presentation slide deck                                                  & --- & S & L & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Acknowledgments.} The classical-ML pipelines were accelerated by the cuML library (NVIDIA RAPIDS); GPU augmentation was implemented with Kornia. Compute was provided by Google Colab Pro+. The team benefited from instructor feedback on the project proposal and from peer review during the regularization-ablation analysis.
+
+
+\begin{thebibliography}{9}
+\bibitem{helber2019} Helber, P., Bischke, B., Dengel, A., Borth, D. (2019). EuroSAT: A novel dataset and deep learning benchmark for land use and land cover classification. \emph{IEEE JSTARS}, 12(7), 2217--2226.
+\bibitem{wilson2017} Wilson, A.~C., Roelofs, R., Stern, M., Srebro, N., Recht, B. (2017). The marginal value of adaptive gradient methods in machine learning. \emph{NeurIPS}.
+\bibitem{choi2019} Choi, D., Shallue, C.~J., Nado, Z., Lee, J., Maddison, C.~J., Dahl, G.~E. (2019). On empirical comparisons of optimizers for deep learning. \emph{arXiv:1910.05446}.
+\bibitem{batchnorm2015} Ioffe, S., Szegedy, C. (2015). Batch normalization: Accelerating deep network training by reducing internal covariate shift. \emph{ICML}.
+\bibitem{dropout2014} Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I., Salakhutdinov, R. (2014). Dropout: A simple way to prevent neural networks from overfitting. \emph{JMLR}, 15(56), 1929--1958.
+\bibitem{he2016} He, K., Zhang, X., Ren, S., Sun, J. (2016). Deep residual learning for image recognition. \emph{CVPR}.
+\bibitem{kingma2014} Kingma, D.~P., Ba, J. (2014). Adam: A method for stochastic optimization. \emph{ICLR}.
+\bibitem{deng2009} Deng, J., Dong, W., Socher, R., Li, L.~J., Li, K., Fei-Fei, L. (2009). ImageNet: A large-scale hierarchical image database. \emph{CVPR}.
+\bibitem{dalal2005} Dalal, N., Triggs, B. (2005). Histograms of oriented gradients for human detection. \emph{CVPR}.
+\bibitem{cheng2017} Cheng, G., Han, J., Lu, X. (2017). Remote sensing image scene classification: Benchmark and state of the art. \emph{Proc. IEEE}, 105(10), 1865--1883.
+\end{thebibliography}
+
+\end{document}

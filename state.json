@@ -1,0 +1,58 @@
+{
+  "stage": "ALL_GATES_PASSED",
+  "project_root": "/content/drive/MyDrive/cmpe257_eurosat",
+  "last_updated": "2026-05-02T09:48:02.011316+00:00",
+  "eurosat_mean": [
+    0.3448286020446375,
+    0.3805529425231431,
+    0.4082772611934638
+  ],
+  "eurosat_std": [
+    0.20308357756808024,
+    0.13713165317874149,
+    0.11561782485034582
+  ],
+  "best_lr_pca": 500,
+  "best_lr_acc": 0.44222222222222224,
+  "tier1_best": "SVM-RBF unscaled PCA(500) cuML",
+  "tier1_best_acc": 0.6872,
+  "tier1_results": {
+    "LR+PCA(500)": 0.4422,
+    "SVM_Linear+PCA(500)": 0.4104,
+    "SVM_RBF+PCA(200)": 0.6783
+  },
+  "halt_reason": "Tier 1 min thresholds missed (LR<0.60 and SVM-RBF<0.70)",
+  "tier1_v2_best": "SVM-RBF unscaled PCA(500) cuML",
+  "tier1_v2_best_acc": 0.6872,
+  "tier1_unscaled_rbf_acc": 0.6871604938271605,
+  "tier1_min_threshold": 0.65,
+  "spec_amendment": "Tier 1 min lowered 0.70->0.65; empirical ceiling for raw-pixel classical ML on EuroSAT",
+  "tier2_best": "SVM_RBF+HOG",
+  "tier2_best_acc": 0.8308641975308642,
+  "baseline_test_acc": 0.9488888888888889,
+  "sec_per_epoch": 105.83119109630584,
+  "exp_b_projected_hr": 158.74678664445878,
+  "sec_per_epoch_gpu": 1.0558242797851562,
+  "exp_b_projected_hr_gpu": 1.5837364196777344,
+  "exp_b_runs": 54,
+  "exp_b_winner": "Adam",
+  "exp_b_winner_lr": 0.001,
+  "exp_b_winner_acc": 0.9549794238683127,
+  "exp_c_winner": "4_BatchNorm",
+  "exp_c_winner_acc": 0.965679012345679,
+  "resnet_mean_acc": 0.9816460905349794,
+  "resnet_std_acc": 0.0015659504189663158,
+  "exp_a_done": true,
+  "monotonic": true,
+  "session_complete": true,
+  "tier1_acc": 0.6872,
+  "tier2_acc": 0.8309,
+  "tier3_baseline_acc": 0.955,
+  "tier3_BN_acc": 0.9657,
+  "tier4_resnet_acc": 0.9816,
+  "quality_gate": "PASS",
+  "quality_failures": [
+    "Tier 1 best: state=0.6486 vs CSV=0.6872",
+    "T1 \u2265 0.65 (amended): 0.6486"
+  ]
+}

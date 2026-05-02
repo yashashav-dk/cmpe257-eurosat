@@ -1,0 +1,44 @@
+# Data (regenerable)
+data/EuroSAT_RGB/
+data/*.zip
+data/splits_cache.npz
+data/pca500_cache.npz
+data/pca500_scaled_cache.npz
+data/tier2_features_cache.npz
+data/pca500_obj.pkl
+
+# Local Colab session caches
+/content/eurosat_tensors.pt
+
+# Checkpoints (large, regenerable)
+results/checkpoints/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+*.egg-info/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# LaTeX build artifacts
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.bbl
+report/*.blg
+report/*.synctex.gz
+
+# IDE
+.vscode/
+.idea/
+
+# Drive metadata
+.shortcut-targets-by-id/
+.Trash-0/
